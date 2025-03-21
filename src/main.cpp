@@ -37,7 +37,6 @@ cmake --build build && build/main
 #include "assimp/postprocess.h"
 
 #include "Application.hpp"
-#include "random.hpp"
 #include "utils/ControllableCamera.hpp"
 #include "opengl/Framebuffer.hpp"
 #include "opengl/UniformBuffer.hpp"

@@ -1,6 +1,5 @@
 #pragma once
 #include "Material.hpp"
-#include "Vertex.hpp"
 #include "opengl/Texture.hpp"
 #include "opengl/IndexBuffer.hpp"
 #include "opengl/VertexBuffer.hpp"
