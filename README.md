@@ -1,7 +1,10 @@
 # raytracing
-my first raytracer.
 
-to move camera you could press escape to lock the mouse and control it with wasd and mouse.
+![](res/screenshot0.png)
+
+This is my first raytracer. It is missing a BVH, but i might extend this project later.
+
+In order to lock the mouse press escape. Move with wasd and mouse.
 
 # building
 uses cmake:

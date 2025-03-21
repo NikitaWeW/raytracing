@@ -133,6 +133,7 @@ int main(int argc, char **argv)
 
     glClearColor(0, 0, 0, 1);
     constexpr unsigned numPerGroup = 20;
+    float focalPlaneDistance = 10;
 
     std::thread showFps([&app](){ while(!glfwWindowShouldClose(app.window)) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); glfwSetWindowTitle(app.window, ("lopengl -- " + std::to_string((int) glm::round(1 / app.deltatime)) + " FPS").c_str()); }});
     while (!glfwWindowShouldClose(app.window))
@@ -140,14 +141,14 @@ int main(int argc, char **argv)
         auto start = std::chrono::high_resolution_clock::now();
         int prevWidth = app.camera.width, prevHeight = app.camera.height;
         glm::vec3 prevCamPos = app.camera.position, prevCamRotation = app.camera.rotation;
-        float prevFOV = app.camera.fov;
         app.camera.update(app.deltatime);
         glfwGetWindowSize(app.window, &app.camera.width, &app.camera.height);
-        if(prevWidth != app.camera.width || prevHeight != app.camera.height || prevCamPos != app.camera.position || prevCamRotation != app.camera.rotation || prevFOV != app.camera.fov) { // resize textures
+        if(prevWidth != app.camera.width || prevHeight != app.camera.height) { // resize textures
             mainTexture.bind();
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app.camera.width, app.camera.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
             app.numAccumFrames = 0;
         }
+        if(prevCamPos != app.camera.position || prevCamRotation != app.camera.rotation) app.numAccumFrames = 0;
 //  =========================================== 
         glViewport(0, 0, app.camera.width, app.camera.height);
         app.shaders[0].bind();
@@ -169,6 +170,7 @@ int main(int argc, char **argv)
         glUniform3f(app.shaders[0].getUniform("u_camera.up"), app.camera.getUp().x, app.camera.getUp().y, app.camera.getUp().z);
         glUniform1f(app.shaders[0].getUniform("u_camera.fov"), app.camera.fov);
         glUniform1f(app.shaders[0].getUniform("u_camera.aspect"), (float) app.camera.width / app.camera.height);
+        glUniform1f(app.shaders[0].getUniform("u_camera.focalPlaneDistance"), focalPlaneDistance);
         glUniform1f(app.shaders[0].getUniform("u_time"), glfwGetTime());
 
         unsigned numModels = 0;
@@ -228,11 +230,13 @@ int main(int argc, char **argv)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGui::Begin("properties");
 
-    ImGui::Separator();
-    if(ImGui::Button("reset accumulation")) app.numAccumFrames = 0;
-    if(ImGui::Button("reload shaders")) app.reloadShaders();
+    float prevFocalPlaneDistance = focalPlaneDistance;
+    ImGui::SliderFloat("focal plane distance", &focalPlaneDistance, 2, 30);
+    if(prevFocalPlaneDistance != focalPlaneDistance) app.numAccumFrames = 0;
 
+    ImGui::End();
     if(app.failedToReloadShaders) {
         ImGui::OpenPopup("failed to reload shaders!");
         app.failedToReloadShaders = false;

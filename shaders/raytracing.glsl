@@ -21,6 +21,7 @@ struct Camera {
     vec3 forward;
     vec3 right;
     vec3 up;
+    float focalPlaneDistance;
 };
 struct Ray {
     vec3 direction;
@@ -118,6 +119,7 @@ vec3 rayColor(Ray ray) {
     for(uint i = 0; i < maxBounceCount; ++i) {
         Hitinfo info = rayScene(ray);
         if(info.exists) {
+            // return info.material.color;
             ray.origin = info.position;
             vec3 diffuseDir = info.normal + randUnitSphere(seed);
             vec3 specularDir = reflect(ray.direction, info.normal);
@@ -168,11 +170,16 @@ Hitinfo rayScene(Ray ray) {
 Ray calculateRay(vec2 texCoords, Camera camera) {
     vec2 NDCcoords = texCoords * 2.0 - 1.0;
     float nearPlaneScale = tan(radians(camera.fov) * 0.5);
-    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale);
+    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale) + vec2(randNegOneOne(seed), randNegOneOne(seed)) * 0.0001;
 
-    const vec3 rayDir = camera.forward + viewPortCoords.x * camera.right + viewPortCoords.y * camera.up;
+    vec3 rayDir = camera.forward + viewPortCoords.x * camera.right + viewPortCoords.y * camera.up;
+    vec3 rayOrigin = camera.position;
+    vec3 focalPlanePoint = rayOrigin + normalize(rayDir) * camera.focalPlaneDistance;
+    rayOrigin += (randNegOneOne(seed) * camera.right + randNegOneOne(seed) * camera.up) * 0.5;
+    rayDir = focalPlanePoint - rayOrigin;
 
-    return Ray(normalize(rayDir + randUnitSphere(seed) * 0.0001), camera.position);
+    // return Ray(normalize(rayDir + randUnitSphere(seed) * 0.0001), camera.position);
+    return Ray(normalize(rayDir), rayOrigin);
 }
 float rayTriangle(Ray ray, Triangle triangle) {
     // https://stackoverflow.com/a/42752998
