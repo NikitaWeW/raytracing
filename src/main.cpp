@@ -97,19 +97,15 @@ int main(int argc, char **argv)
 
     std::thread showFps([&app](){ while(!glfwWindowShouldClose(app.window)) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); glfwSetWindowTitle(app.window, ("lopengl -- " + std::to_string((int) glm::round(1 / app.deltatime)) + " FPS").c_str()); }});
 
-    float scatteringStrength = 1;
-    glm::vec3 wavelengths{700, 530, 440};
-    glm::vec3 scatteringCoefficients{
-        glm::pow(400 / wavelengths.r, 4) * scatteringStrength,
-        glm::pow(400 / wavelengths.g, 4) * scatteringStrength,
-        glm::pow(400 / wavelengths.b, 4) * scatteringStrength
-    };
-    float dencityFalloff = 7;
-    bool spin = true;
+    glm::vec3 wavelengths{800, 700, 500};
+    float dencityFalloff = 10;
     glm::vec3 sunPos = {-10, 2, 1};
     glm::vec3 planetPos = {1, 1, 1};
-    float planetSize = 2;
+    float planetSize = 3;
     float atmosphereSize = 1;
+    float scatteringStrength = 1.5f;
+    glm::vec3 scatteringCoefficients;
+    bool updateCoefficients = true;
     while (!glfwWindowShouldClose(app.window))
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -124,6 +120,16 @@ int main(int argc, char **argv)
         }
         if(prevCamPos != app.camera.position || prevCamRotation != app.camera.rotation) app.numAccumFrames = 0;
 //  =========================================== 
+
+        if(updateCoefficients) {
+            scatteringCoefficients = {
+                glm::pow(300 / wavelengths.r, 4) * scatteringStrength,
+                glm::pow(400 / wavelengths.g, 4) * scatteringStrength,
+                glm::pow(400 / wavelengths.b, 4) * scatteringStrength
+            };
+            updateCoefficients = false;
+        }
+
         glViewport(0, 0, app.camera.width, app.camera.height);
         app.shaders[0].bind();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -150,12 +156,7 @@ int main(int argc, char **argv)
         modelMat = glm::rotate(modelMat, 1.0f, {45, 45, 15});
         glUniformMatrix4fv(app.shaders[0].getUniform("u_planet.invModelMat"), 1, GL_FALSE, &glm::inverse(modelMat)[0][0]);
 
-        glm::mat4 sunMat{1.0f};
-        sunMat = glm::translate(sunMat, planetPos - sunPos);
-        sunMat = glm::rotate(sunMat, 1.0f, {35, spin ? glfwGetTime() : 45, 15});
-        sunMat = glm::translate(sunMat, sunPos - planetPos);
-        glm::vec3 newSunPos(sunMat * glm::vec4(sunPos, 1));
-        glUniform3fv(app.shaders[0].getUniform("u_sun.position"), 1, &newSunPos.x);
+        glUniform3fv(app.shaders[0].getUniform("u_sun.position"), 1, &sunPos.x);
         glUniform3f(app.shaders[0].getUniform("u_sun.color"), 1, 0.8, 0.2);
 
         glDispatchCompute(app.camera.width / numPerGroup + 1, app.camera.height / numPerGroup + 1, 1);
@@ -181,7 +182,10 @@ int main(int argc, char **argv)
     float prevFocalPlaneDistance = focalPlaneDistance;
     ImGui::SliderFloat("dencity falloff", &dencityFalloff, 0, 30);
     ImGui::InputFloat("camera speed", &app.camera.speed);
-    ImGui::Checkbox("spin", &spin);
+    ImGui::DragFloat3("sun position", &sunPos.x, 0.5);
+    ImGui::InputFloat("atmosphere size", &atmosphereSize);
+    if(ImGui::InputFloat("scattering strength", &scatteringStrength)) updateCoefficients = true;
+    if(ImGui::DragFloat3("wavelengths", &wavelengths.r, 0.1)) updateCoefficients = true;
     if(prevFocalPlaneDistance != focalPlaneDistance) app.numAccumFrames = 0;
 
     ImGui::End();

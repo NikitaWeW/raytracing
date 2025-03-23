@@ -64,8 +64,10 @@ vec3 lerp(vec3 a, vec3 b, float x) { return a + x * (b - a); }
 vec2 lerp(vec2 a, vec2 b, float x) { return a + x * (b - a); }
 
 uint seed = 0;
-const uint maxBounceCount = 10;
 const uint raysPerPixel = 1;
+
+const uint numScatterSamples = 5;
+const uint numOpticalDepthSamples = 5;
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -88,20 +90,19 @@ float distanceToCube(vec3 point, vec3 cubeCenter, float cubeSize) {
     return max(sd, 0);
 }
 float dencityAtPoint(vec3 point) {
-    float heightAboveSurface = distanceToCube(point, u_planet.position, u_planet.size);
-	float height01 = clamp(heightAboveSurface / u_planet.atmosphereSize, 0, 1);
-	float localDensity = exp(-height01 * u_planet.atmosphereDencityFalloff) * (1 - height01);
-	return localDensity;
+    float height = distanceToCube(point, u_planet.position, u_planet.size);
+    float height01 = clamp(height / u_planet.atmosphereSize, 0, 1);
+    float dencity = exp(-height01 * u_planet.atmosphereDencityFalloff);
+    dencity *= (1 - height01);
+    return dencity;
 }
 float opticalDepth(Ray ray, float length) {
-    const uint numOpticalDepthPoints = 10;
     vec3 samplePoint = ray.origin;
-    float stepSize = length / (numOpticalDepthPoints - 1);
+    float stepSize = length / (numOpticalDepthSamples - 1);
     float opticalDepth = 0;
-    for(uint i = 0; i < numOpticalDepthPoints; ++i) {
-        float localDencity = dencityAtPoint(samplePoint);
-        opticalDepth += localDencity;
-        samplePoint += normalize(ray.direction) * stepSize;
+    for(uint i = 0; i < numOpticalDepthSamples; ++i) {
+        opticalDepth += dencityAtPoint(samplePoint);
+        samplePoint += ray.direction * stepSize;
     }
     return opticalDepth;
 }
@@ -122,30 +123,23 @@ vec3 rayColor(Ray ray) {
         atmosphereIntersection.y - atmosphereIntersection.x : 
         sceneIntersection.x - atmosphereIntersection.x;
 
-    // calculate atmosphere color
-    const uint numInScatteringPoints = 10; // tweak this
-    vec3 inScatterPoint = newRay.origin + normalize(newRay.direction) * atmosphereIntersection.x;
-    float stepSize = distanceTroughAtmosphere / (numInScatteringPoints - 1);
-    vec3 inScatteredLight = vec3(0);
-    float viewRayOpticalDepth = 0;
-    for(uint i = 0; i < numInScatteringPoints; ++i) {
-        vec3 dirToSun = normalize(u_sun.position - inScatterPoint);
-        vec2 sunRayAtmosphereIntersection = rayAABB(Ray(dirToSun, u_sun.position), planetAtmosphereBox);
-        float sunRayLength = length(u_sun.position + sunRayAtmosphereIntersection.x * dirToSun - inScatterPoint);
-
-        float sunRayOpticalDepth = opticalDepth(Ray(-dirToSun, inScatterPoint), sunRayLength);
-        viewRayOpticalDepth = opticalDepth(Ray(newRay.direction, inScatterPoint), stepSize * i);
-
-        vec3 transmittance = exp(-(sunRayOpticalDepth + viewRayOpticalDepth) * u_scatteringCoefficients);
-        inScatteredLight += dencityAtPoint(inScatterPoint) * transmittance * u_scatteringCoefficients * stepSize;
-        inScatterPoint += normalize(ray.direction) * stepSize;
+    vec3 samplePoint = newRay.origin + atmosphereIntersection.x * newRay.direction;
+    float stepSize = (atmosphereIntersection.y - atmosphereIntersection.x) / (numScatterSamples - 1);
+    vec3 scatteredLight = vec3(0);
+    float viewRayOpticalDepth;
+    for(uint i = 0; i < numScatterSamples; ++i) {
+        vec3 dirToSun = normalize(u_sun.position - samplePoint);
+        vec2 sunRayAtmosphereIntersection = rayAABB(Ray(-dirToSun, u_sun.position), planetAtmosphereBox);
+        float sunRayOpticalDepth = opticalDepth(Ray(dirToSun, samplePoint), sunRayAtmosphereIntersection.y - sunRayAtmosphereIntersection.x);
+        viewRayOpticalDepth = opticalDepth(Ray(-newRay.direction, samplePoint), stepSize * i);
+        vec3 transmittance = exp(-(viewRayOpticalDepth + sunRayOpticalDepth) * u_scatteringCoefficients);
+        scatteredLight += transmittance * dencityAtPoint(samplePoint) * u_scatteringCoefficients;
+        samplePoint += newRay.direction * stepSize;
     }
-    vec3 originalColor = lerp(vec3(0), u_planet.color, float(sceneIntersection.x != -1)); // change this
-
+    // return scatteredLight;
     float originalColorTransmittance = exp(-viewRayOpticalDepth);
-    inScatteredLight += originalColor * originalColorTransmittance;
-
-    return originalColor * (1 - inScatteredLight) + inScatteredLight;
+    vec3 originalColor = lerp(vec3(0), u_planet.color, float(sceneIntersection.x != -1));
+    return originalColor * (1 - scatteredLight) + scatteredLight;
 
 }
 Ray calculateRay(vec2 texCoords, Camera camera) {
@@ -180,17 +174,6 @@ vec2 rayAABB(Ray ray, AABB aabb) {
         // vec2(tNear, tFar),
         float(tFar >= tNear && tFar > 0)
     ); // wut
-}
-bool rayAABBb(Ray ray, AABB aabb) {
-    vec3 rayInvDir = 1 / ray.direction;
-    vec3 tMin = (aabb.min - ray.origin) * rayInvDir;
-    vec3 tMax = (aabb.max - ray.origin) * rayInvDir;
-    vec3 t1 = min(tMin, tMax);
-    vec3 t2 = max(tMin, tMax);
-    float tNear = max(max(t1.x, t1.y), t1.z);
-    float tFar = min(min(t2.x, t2.y), t2.z);
-
-    return tFar > tNear && tFar > 0;
 }
 float raySphere(Ray ray, Sphere sphere) {
     const vec3 OC = sphere.center - ray.origin;
