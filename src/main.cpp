@@ -82,46 +82,6 @@ int main(int argc, char **argv)
     
 //  =========================================== 
 
-    Scene scene;
-    scene.addModel("sphere", {"res/models/sphere_low_poly.glb"});
-    scene.addModel("quad", {"res/models/quad.obj"});
-    scene.generateData();
-
-    Material materials[] = {
-        {
-            {0, 0, 0},
-            {30, 30, 30},
-        },
-        {
-            {0.5, 0.9, 0.2},
-        },
-        {
-            {0.2, 0.8, 0.9},
-            {0, 0, 0},
-            1,
-            1,
-            {1, 1, 0}
-        },
-        {
-            {0.2, 0.2, 0.8},
-            {0, 0, 0},
-            1,
-            0.4
-        },
-        {
-            {0.8, 0.1, 0.1},
-            {0, 0, 0},
-            1,
-            0.15
-        },
-        {
-            {0.8, 0.7, 0.5},
-            {0, 0, 0},
-            1,
-            0.02
-        },
-    };
-
 //  =========================================== 
 
     Texture mainTexture;
@@ -136,6 +96,20 @@ int main(int argc, char **argv)
     float focalPlaneDistance = 10;
 
     std::thread showFps([&app](){ while(!glfwWindowShouldClose(app.window)) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); glfwSetWindowTitle(app.window, ("lopengl -- " + std::to_string((int) glm::round(1 / app.deltatime)) + " FPS").c_str()); }});
+
+    float scatteringStrength = 1;
+    glm::vec3 wavelengths{700, 530, 440};
+    glm::vec3 scatteringCoefficients{
+        glm::pow(400 / wavelengths.r, 4) * scatteringStrength,
+        glm::pow(400 / wavelengths.g, 4) * scatteringStrength,
+        glm::pow(400 / wavelengths.b, 4) * scatteringStrength
+    };
+    float dencityFalloff = 7;
+    bool spin = true;
+    glm::vec3 sunPos = {-10, 2, 1};
+    glm::vec3 planetPos = {1, 1, 1};
+    float planetSize = 2;
+    float atmosphereSize = 1;
     while (!glfwWindowShouldClose(app.window))
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -155,13 +129,6 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         glBindImageTexture(0, mainTexture.getRenderID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA16F);
         
-        scene.getIndicesSSBO().bind(0);
-        scene.getPositionsSSBO().bind(1);
-        scene.getNormalsSSBO().bind(2);
-        glShaderStorageBlockBinding(app.shaders[0].getRenderID(), app.shaders[0].getStorageBlock("indicesSSBO"), 0);
-        glShaderStorageBlockBinding(app.shaders[0].getRenderID(), app.shaders[0].getStorageBlock("positionsSSBO"), 1);
-        glShaderStorageBlockBinding(app.shaders[0].getRenderID(), app.shaders[0].getStorageBlock("normalsSSBO"), 2);
-        
         glUniform1i(app.shaders[0].getUniform("u_output"), 0);
         glUniform1ui(app.shaders[0].getUniform("u_numAccumFrames"), app.numAccumFrames);
         glUniform3fv(app.shaders[0].getUniform("u_camera.position"), 1, &app.camera.position.x);
@@ -172,45 +139,24 @@ int main(int argc, char **argv)
         glUniform1f(app.shaders[0].getUniform("u_camera.aspect"), (float) app.camera.width / app.camera.height);
         glUniform1f(app.shaders[0].getUniform("u_camera.focalPlaneDistance"), focalPlaneDistance);
         glUniform1f(app.shaders[0].getUniform("u_time"), glfwGetTime());
+        glUniform3fv(app.shaders[0].getUniform("u_scatteringCoefficients"), 1, &scatteringCoefficients.r);
 
-        unsigned numModels = 0;
-        
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({0, 1, -30});
-        scene.getModels().at("sphere").scale({5, 5, 5});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[0];
-        scene.setUniforms("sphere", "u_models[0]", app.shaders[0], &numModels);
-        
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({0, -20, 0});
-        scene.getModels().at("sphere").scale({20, 20, 20});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[1];
-        scene.setUniforms("sphere", "u_models[1]", app.shaders[0], &numModels);
-        
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({0, 1, 0});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[2];
-        scene.setUniforms("sphere", "u_models[2]", app.shaders[0], &numModels);
-        
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({3, 1, 1});
-        scene.getModels().at("sphere").scale({1.5, 1.5, 1.5});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[3];
-        scene.setUniforms("sphere", "u_models[3]", app.shaders[0], &numModels);
+        glUniform3fv(app.shaders[0].getUniform("u_planet.position"), 1, &planetPos.x);
+        glUniform3f(app.shaders[0].getUniform("u_planet.color"), 0.06, 0.6, 0.07);
+        glUniform1f(app.shaders[0].getUniform("u_planet.size"), planetSize);
+        glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereSize"), atmosphereSize);
+        glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereDencityFalloff"), dencityFalloff);
+        glm::mat4 modelMat{1.0f}; 
+        modelMat = glm::rotate(modelMat, 1.0f, {45, 45, 15});
+        glUniformMatrix4fv(app.shaders[0].getUniform("u_planet.invModelMat"), 1, GL_FALSE, &glm::inverse(modelMat)[0][0]);
 
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({-1, 0.45, -1});
-        scene.getModels().at("sphere").scale({0.5, 0.5, 0.5});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[4];
-        scene.setUniforms("sphere", "u_models[4]", app.shaders[0], &numModels);
-
-        scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({1, 0.5, -2});
-        scene.getModels().at("sphere").scale({0.75, 0.75, 0.75});
-        scene.getModels().at("sphere").getMeshes()[0].material = materials[5];
-        scene.setUniforms("sphere", "u_models[5]", app.shaders[0], &numModels);
-
-        glUniform1ui(app.shaders[0].getUniform("u_modelCount"), numModels);
+        glm::mat4 sunMat{1.0f};
+        sunMat = glm::translate(sunMat, planetPos - sunPos);
+        sunMat = glm::rotate(sunMat, 1.0f, {35, spin ? glfwGetTime() : 45, 15});
+        sunMat = glm::translate(sunMat, sunPos - planetPos);
+        glm::vec3 newSunPos(sunMat * glm::vec4(sunPos, 1));
+        glUniform3fv(app.shaders[0].getUniform("u_sun.position"), 1, &newSunPos.x);
+        glUniform3f(app.shaders[0].getUniform("u_sun.color"), 1, 0.8, 0.2);
 
         glDispatchCompute(app.camera.width / numPerGroup + 1, app.camera.height / numPerGroup + 1, 1);
         ++app.numAccumFrames;
@@ -233,7 +179,9 @@ int main(int argc, char **argv)
     ImGui::Begin("properties");
 
     float prevFocalPlaneDistance = focalPlaneDistance;
-    ImGui::SliderFloat("focal plane distance", &focalPlaneDistance, 2, 30);
+    ImGui::SliderFloat("dencity falloff", &dencityFalloff, 0, 30);
+    ImGui::InputFloat("camera speed", &app.camera.speed);
+    ImGui::Checkbox("spin", &spin);
     if(prevFocalPlaneDistance != focalPlaneDistance) app.numAccumFrames = 0;
 
     ImGui::End();
