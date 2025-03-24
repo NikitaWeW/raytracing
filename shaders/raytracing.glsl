@@ -124,7 +124,7 @@ vec3 rayColor(Ray ray) {
         sceneIntersection.x - atmosphereIntersection.x;
 
     vec3 samplePoint = newRay.origin + atmosphereIntersection.x * newRay.direction;
-    float stepSize = (atmosphereIntersection.y - atmosphereIntersection.x) / (numScatterSamples - 1);
+    float stepSize = distanceTroughAtmosphere / (numScatterSamples - 1);
     vec3 scatteredLight = vec3(0);
     float viewRayOpticalDepth;
     for(uint i = 0; i < numScatterSamples; ++i) {
@@ -136,7 +136,6 @@ vec3 rayColor(Ray ray) {
         scatteredLight += transmittance * dencityAtPoint(samplePoint) * u_scatteringCoefficients;
         samplePoint += newRay.direction * stepSize;
     }
-    // return scatteredLight;
     float originalColorTransmittance = exp(-viewRayOpticalDepth);
     vec3 originalColor = lerp(vec3(0), u_planet.color, float(sceneIntersection.x != -1));
     return originalColor * (1 - scatteredLight) + scatteredLight;

@@ -97,13 +97,13 @@ int main(int argc, char **argv)
 
     std::thread showFps([&app](){ while(!glfwWindowShouldClose(app.window)) { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); glfwSetWindowTitle(app.window, ("lopengl -- " + std::to_string((int) glm::round(1 / app.deltatime)) + " FPS").c_str()); }});
 
-    glm::vec3 wavelengths{800, 700, 500};
+    glm::vec3 wavelengths{200, 400, 700};
     float dencityFalloff = 10;
     glm::vec3 sunPos = {-10, 2, 1};
     glm::vec3 planetPos = {1, 1, 1};
     float planetSize = 3;
     float atmosphereSize = 1;
-    float scatteringStrength = 1.5f;
+    float scatteringStrength = 1.0f;
     glm::vec3 scatteringCoefficients;
     bool updateCoefficients = true;
     while (!glfwWindowShouldClose(app.window))
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
         glUniform3fv(app.shaders[0].getUniform("u_scatteringCoefficients"), 1, &scatteringCoefficients.r);
 
         glUniform3fv(app.shaders[0].getUniform("u_planet.position"), 1, &planetPos.x);
-        glUniform3f(app.shaders[0].getUniform("u_planet.color"), 0.06, 0.6, 0.07);
+        glUniform3f(app.shaders[0].getUniform("u_planet.color"), 0.3, 0.1, 0.01);
         glUniform1f(app.shaders[0].getUniform("u_planet.size"), planetSize);
         glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereSize"), atmosphereSize);
         glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereDencityFalloff"), dencityFalloff);
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
     ImGui::DragFloat3("sun position", &sunPos.x, 0.5);
     ImGui::InputFloat("atmosphere size", &atmosphereSize);
     if(ImGui::InputFloat("scattering strength", &scatteringStrength)) updateCoefficients = true;
-    if(ImGui::DragFloat3("wavelengths", &wavelengths.r, 0.1)) updateCoefficients = true;
+    if(ImGui::DragFloat3("wavelengths", &wavelengths.r, 0.5)) updateCoefficients = true;
     if(prevFocalPlaneDistance != focalPlaneDistance) app.numAccumFrames = 0;
 
     ImGui::End();
