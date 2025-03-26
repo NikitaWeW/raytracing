@@ -100,6 +100,7 @@ int main(int argc, char **argv)
     glm::vec3 wavelengths{200, 400, 700};
     float dencityFalloff = 10;
     glm::vec3 sunPos = {-10, 2, 1};
+    glm::vec3 planetRotation = {15, 35, 45};
     glm::vec3 planetPos = {1, 1, 1};
     float planetSize = 3;
     float atmosphereSize = 1;
@@ -152,8 +153,7 @@ int main(int argc, char **argv)
         glUniform1f(app.shaders[0].getUniform("u_planet.size"), planetSize);
         glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereSize"), atmosphereSize);
         glUniform1f(app.shaders[0].getUniform("u_planet.atmosphereDencityFalloff"), dencityFalloff);
-        glm::mat4 modelMat{1.0f}; 
-        modelMat = glm::rotate(modelMat, 1.0f, {45, 45, 15});
+        glm::mat4 modelMat = glm::rotate(glm::mat4{1.0f}, 1.0f, planetRotation); // only rotate
         glUniformMatrix4fv(app.shaders[0].getUniform("u_planet.invModelMat"), 1, GL_FALSE, &glm::inverse(modelMat)[0][0]);
 
         glUniform3fv(app.shaders[0].getUniform("u_sun.position"), 1, &sunPos.x);
