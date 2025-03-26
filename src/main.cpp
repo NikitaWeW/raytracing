@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     Material materials[] = {
         {
             {0, 0, 0},
-            {30, 30, 30},
+            {30, 27.2, 6},
         },
         {
             {0.5, 0.9, 0.2},

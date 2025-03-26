@@ -119,7 +119,7 @@ vec3 rayColor(Ray ray) {
     for(uint i = 0; i < maxBounceCount; ++i) {
         Hitinfo info = rayScene(ray);
         if(info.exists) {
-            // return info.material.color;
+            // return info.material.color + info.material.emission;
             ray.origin = info.position;
             vec3 diffuseDir = info.normal + randUnitSphere(seed);
             vec3 specularDir = reflect(ray.direction, info.normal);
