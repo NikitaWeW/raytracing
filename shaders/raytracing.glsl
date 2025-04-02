@@ -51,7 +51,6 @@ float lerp(float a, float b, float x) { return a + x * (b - a); }
 vec3 lerp(vec3 a, vec3 b, float x) { return a + x * (b - a); }
 vec2 lerp(vec2 a, vec2 b, float x) { return a + x * (b - a); }
 
-uint seed = 0;
 const uint raysPerPixel = 1;
 
 const uint numScatterSamples = 5;
@@ -62,7 +61,6 @@ void main() {
     vec2 numTexels = gl_NumWorkGroups.xy*gl_WorkGroupSize.xy;
     vec2 texCoords = vec2(texelCoord) / numTexels;
     float pixelIndex = texelCoord.y + (numTexels.x + numTexels.y) * texelCoord.x;
-    seed = uint(u_time * pixelIndex);
 
     vec3 color = vec3(0);
     for(uint i = 0; i < raysPerPixel; ++i) {
@@ -132,7 +130,7 @@ vec3 rayColor(Ray ray) {
 Ray calculateRay(vec2 texCoords, Camera camera) {
     vec2 NDCcoords = texCoords * 2.0 - 1.0;
     float nearPlaneScale = tan(radians(camera.fov) * 0.5);
-    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale) + vec2(randNegOneOne(seed), randNegOneOne(seed)) * 0.0001;
+    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale);
 
     vec3 rayDir = camera.forward + viewPortCoords.x * camera.right + viewPortCoords.y * camera.up;
     vec3 rayOrigin = camera.position;
