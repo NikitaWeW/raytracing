@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     Material materials[] = {
         {
             {0, 0, 0},
-            {30, 27.2, 6},
+            glm::vec3{30, 27.2, 6} * 4.0f,
         },
         {
             {0.5, 0.9, 0.2},
@@ -176,14 +176,14 @@ int main(int argc, char **argv)
         unsigned numModels = 0;
         
         scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({0, 1, -30});
-        scene.getModels().at("sphere").scale({5, 5, 5});
+        scene.getModels().at("sphere").translate({0, 1, -200});
+        scene.getModels().at("sphere").scale({10, 10, 10});
         scene.getModels().at("sphere").getMeshes()[0].material = materials[0];
         scene.setUniforms("sphere", "u_models[0]", app.shaders[0], &numModels);
         
         scene.getModels().at("sphere").resetMatrix();
-        scene.getModels().at("sphere").translate({0, -20, 0});
-        scene.getModels().at("sphere").scale({20, 20, 20});
+        scene.getModels().at("sphere").translate({0, -100, 0});
+        scene.getModels().at("sphere").scale({100, 100, 100});
         scene.getModels().at("sphere").getMeshes()[0].material = materials[1];
         scene.setUniforms("sphere", "u_models[1]", app.shaders[0], &numModels);
         

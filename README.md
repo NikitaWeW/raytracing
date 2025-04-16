@@ -1,7 +1,8 @@
 # raytracing
 
 ![](res/screenshot0.png)
-![](res/screenshot1.png)
+<!-- ![](res/screenshot1.png) -->
+![](res/screenshot2.png)
 
 This is my first raytracer. It is missing a BVH, but i might extend this project later.
 

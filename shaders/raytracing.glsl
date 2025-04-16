@@ -82,6 +82,7 @@ uint rand(inout uint state); // return random uint in [0; 0xffffffffu]
 float randNormalDistribution(inout uint state);
 float randZeroOne(inout uint state); // return random float in [0; 1]
 float randNegOneOne(inout uint state); // return random float in [-1; 1]
+vec2 randCircle(inout uint state);
 vec3 randUnitSphere(inout uint state);
 vec3 randHemisphere(inout uint state, vec3 normal);
 
@@ -92,7 +93,7 @@ vec3 lerp(vec3 a, vec3 b, float x) { return a + x * (b - a); }
 
 uint seed = 0;
 const uint maxBounceCount = 10;
-const uint raysPerPixel = 1;
+const uint raysPerPixel = 4;
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -119,7 +120,7 @@ vec3 rayColor(Ray ray) {
     for(uint i = 0; i < maxBounceCount; ++i) {
         Hitinfo info = rayScene(ray);
         if(info.exists) {
-            // return info.material.color + info.material.emission;
+            // return info.material.color + info.material.emission; // debug colors
             ray.origin = info.position;
             vec3 diffuseDir = info.normal + randUnitSphere(seed);
             vec3 specularDir = reflect(ray.direction, info.normal);
@@ -170,12 +171,13 @@ Hitinfo rayScene(Ray ray) {
 Ray calculateRay(vec2 texCoords, Camera camera) {
     vec2 NDCcoords = texCoords * 2.0 - 1.0;
     float nearPlaneScale = tan(radians(camera.fov) * 0.5);
-    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale) + vec2(randNegOneOne(seed), randNegOneOne(seed)) * 0.0001;
+    vec2 viewPortCoords = vec2(NDCcoords.x * camera.aspect * nearPlaneScale, NDCcoords.y * nearPlaneScale) + vec2(randNegOneOne(seed), randNegOneOne(seed)) * 0.0001; // AA
 
     vec3 rayDir = camera.forward + viewPortCoords.x * camera.right + viewPortCoords.y * camera.up;
     vec3 rayOrigin = camera.position;
     vec3 focalPlanePoint = rayOrigin + normalize(rayDir) * camera.focalPlaneDistance;
-    rayOrigin += (randNegOneOne(seed) * camera.right + randNegOneOne(seed) * camera.up) * 0.5;
+    vec2 defucusJitter = randCircle(seed) / raysPerPixel;
+    rayOrigin += defucusJitter.x * camera.right + defucusJitter.y * camera.up;
     rayDir = focalPlanePoint - rayOrigin;
 
     // return Ray(normalize(rayDir + randUnitSphere(seed) * 0.0001), camera.position);
@@ -267,4 +269,8 @@ float randNormalDistribution(inout uint state) {
     float theta = 2 * 3.1415926 * randZeroOne(state);
     float rho = sqrt(-2 * log(randZeroOne(state)));
     return rho * cos(theta);
+}
+vec2 randCircle(inout uint state) {    
+    float theta = 2 * 3.1415926 * randNegOneOne(state);
+    return vec2(cos(theta), sin(theta)) * sqrt(randZeroOne(state));
 }
