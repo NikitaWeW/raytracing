@@ -87,7 +87,7 @@ float opticalDepth(Ray ray, float length) {
     float stepSize = length / (numOpticalDepthSamples - 1);
     float opticalDepth = 0;
     for(uint i = 0; i < numOpticalDepthSamples; ++i) {
-        opticalDepth += dencityAtPoint(samplePoint);
+        opticalDepth += dencityAtPoint(samplePoint) * stepSize;
         samplePoint += ray.direction * stepSize;
     }
     return opticalDepth;
