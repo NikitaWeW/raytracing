@@ -88,12 +88,12 @@ vec3 randHemisphere(inout uint state, vec3 normal);
 
 vec3 rayColor(Ray ray);
 Ray calculateRay(vec2 texCoords, Camera camera);
-float lerp(float a, float b, float x) { return a + x * (b - a); }
-vec3 lerp(vec3 a, vec3 b, float x) { return a + x * (b - a); }
+#define lerp mix // why is this stupid function not called lerp!??
 
 uint seed = 0;
 const uint maxBounceCount = 10;
 const uint raysPerPixel = 4;
+const float jitterStrength = 0.5;
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -155,6 +155,7 @@ Hitinfo rayScene(Ray ray) {
         //     }
         // }
 
+        // to save resources use the spheres as a primitive
         Sphere sphere = Sphere(vec3(u_models[modelIndex].modelMat[3][0], u_models[modelIndex].modelMat[3][1], u_models[modelIndex].modelMat[3][2]), u_models[modelIndex].modelMat[0][0]);
         float intersection = raySphere(ray, sphere);
         if(intersection != -1 && intersection < closestIntersection) {
@@ -176,7 +177,7 @@ Ray calculateRay(vec2 texCoords, Camera camera) {
     vec3 rayDir = camera.forward + viewPortCoords.x * camera.right + viewPortCoords.y * camera.up;
     vec3 rayOrigin = camera.position;
     vec3 focalPlanePoint = rayOrigin + normalize(rayDir) * camera.focalPlaneDistance;
-    vec2 defucusJitter = randCircle(seed) / raysPerPixel;
+    vec2 defucusJitter = randCircle(seed) / raysPerPixel * jitterStrength;
     rayOrigin += defucusJitter.x * camera.right + defucusJitter.y * camera.up;
     rayDir = focalPlanePoint - rayOrigin;
 
